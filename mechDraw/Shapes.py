@@ -1,6 +1,17 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
+def Canvas():
+	"""
+	Make a clean preconfigured canvas to draw on
+	"""
+	fig, ax = plt.subplots()
+	
+	plt.axis('off')
+	plt.axis('equal')
+	
+	return (fig, ax)
+
 def RotationMatrix(theta):
 	"""
 	Generates a Rotation Matrix given some theta as input
@@ -308,3 +319,71 @@ class Grid(object):
 			plt.plot([x0, xN],           [y0+i*dy, y0+i*dy], color=color, **kwargs)
 
 
+class Bezier(object):
+	"""
+	
+	"""
+	def __init__(self, pt0, pt1, pt2, pt3):
+		self.pt0 = pt0
+		self.pt1 = pt1
+		self.pt2 = pt2
+		self.pt3 = pt3
+		
+class IBeam(object):
+	"""
+	
+	Args:
+		b
+		h
+		tf
+		tw
+		
+	Kwargs:
+		center (Point): Center of IBeam location
+	"""
+	def __init__(self, b, d, tf, tw, center=Point(0,0)):
+		self.b = b
+		self.d = d
+		self.tf = tf
+		self.tw = tw
+		
+		self.center = center
+		c = center
+		
+		self.list = [
+			[c.x - b/2,  c.y - d/2-tf],
+			[c.x + b/2,  c.y - d/2-tf],
+			[c.x + b/2,  c.y - d/2   ],
+			[c.x + tw/2, c.y - d/2   ],
+			[c.x + tw/2, c.y + d/2   ],
+			[c.x + b/2,  c.y + d/2   ],
+			[c.x + b/2,  c.y + d/2+tf],
+			[c.x - b/2,  c.y + d/2+tf], 
+			[c.x - b/2,  c.y + d/2   ],
+			[c.x - tw/2, c.y + d/2   ],
+			[c.x - tw/2, c.y - d/2   ],
+			[c.x - b/2,  c.y - d/2   ],
+		]
+		
+		self.pts = [Point(pt[0], pt[1]) for pt in self.list]
+	
+	@property
+	def asArray(self):
+		return np.array(self.list)
+		
+	def plot(self, showPoints=False, lw=2, fillColor=None, zorder=-10, **kwargs):
+		
+		pts = self.pts + [self.pts[0]] #repeat first point
+		lines = []
+		for i in range(len(pts)-1):
+			lines.append(Line(pts[i], pts[i+1]))
+			
+		for line in lines:
+			line.plot(lw=lw, **kwargs)
+		
+		if showPoints:
+			for pt in self.pts:
+				pt.plot()
+				
+		if fillColor is not None:
+			plt.fill(self.asArray[:, 0], self.asArray[:, 1], color=fillColor, zorder=zorder)
