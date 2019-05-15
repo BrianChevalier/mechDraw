@@ -73,8 +73,11 @@ class Point(object):
 		new = R.dot(x0.T).T
 		return Point(new[0, 0], new[0, 1])
 	
-	def plot(self, color='k', **kwargs):
-		plt.scatter(self.x, self.y, color=color, **kwargs)
+	def plot(self, color='k', style=None, **kwargs):
+		if style is None:
+			plt.scatter(self.x, self.y, color=color, **kwargs)
+		else:
+			plt.scatter(self.x, self.y, **style, **kwargs)
 		
 	def __repr__(self):
 		return f'Point({self.x}, {self.y})'
@@ -113,10 +116,17 @@ class Line(object):
 	def unVec(self):
 		return self.vec/self.length
 		
-	def plot(self, arrow=None, lw=1, color='k', **kwargs):
+	def plot(self, style=None, arrow=None, lw=1, color='k', **kwargs):
+		
 		pt0 = self.pt0
 		pt1 = self.pt1
-		plt.plot([pt0.x, pt1.x], [pt0.y, pt1.y], lw=lw, color=color, **kwargs)
+		x = [pt0.x, pt1.x]
+		y = [pt0.y, pt1.y]
+		
+		if style is not None:
+			plt.plot(x, y, **style)
+		else:
+			plt.plot(x, y, lw, color, **kwargs)
 		
 		if arrow is not None:
 			scale = 0.1*self.length
@@ -126,28 +136,47 @@ class Line(object):
 		# Plot arrow heads
 		if arrow == '<->' or arrow == '->':
 			start = Point(pt1.x - dx, pt1.y - dy)
-			plt.arrow(start.x,
+			
+			if style is None:
+				plt.arrow(start.x,
 					  start.y,
 					  dx,
 					  dy,
-					  scale,
 					  head_width=0.1,
 					  head_length=0.1,
 					  lw=lw,
 					  color=color,
 					  length_includes_head=True)
+			else:
+				plt.arrow(start.x,
+					  start.y,
+					  dx,
+					  dy,
+					  head_width=0.1,
+					  head_length=0.1,
+					  length_includes_head=True)
 		
 		if arrow == '<->' or arrow == '<-':
 			start = Point(pt0.x + dx, pt0.y + dy)
-			plt.arrow(start.x,
+			
+			if style is None:
+				plt.arrow(start.x,
 					  start.y,
 					  -dx,
 					  -dy,
-					  scale,
+					  #scale,
 					  head_width=0.1,
 					  head_length=0.1,
 					  lw=lw,
 					  color=color,
+					  length_includes_head=True)
+			else:
+				plt.arrow(start.x,
+					  start.y,
+					  -dx,
+					  -dy,
+					  head_width=0.1,
+					  head_length=0.1,
 					  length_includes_head=True)
 			
 	def __repr__(self):
@@ -194,11 +223,19 @@ class Arc(object):
 		y = center.y + radius*np.sin(thetas)
 		return np.array([x, y]).T
 	
-	def plot(self, lw=1, color='k', arrow=None, fill=False, **kwargs):
+	def plot(self, label=None, lw=1, color='k', arrow=None, fill=False, bbox=None, **kwargs):
+		"""
+		Kwargs:
+			label (string): Text label
+			arrow (string): ->, <-, or <->, draws an arrow at start or end of arc
+			bbox (dict): dictionary with properties for [FancyBboxPatch](https://matplotlib.org/api/_as_gen/matplotlib.patches.FancyBboxPatch.html#matplotlib.patches.FancyBboxPatch)
+		"""
 		x, y = self.asArray()[:,0], self.asArray()[:,1]
 		plt.plot(x, y, lw=lw, color=color,**kwargs)
 		
 		if fill == True:
+			x = [self.center.x] + list(x) + [self.center.x]
+			y = [self.center.y] + list(y) + [self.center.y]
 			plt.fill(x, y, '#D3D3D3', zorder=-100)
         
 		if arrow is not None:
@@ -240,6 +277,21 @@ class Arc(object):
 					  color=color,
 					  length_includes_head=True)
 		
+		if label is not None:
+			if bbox is None:
+				bbox=dict(alpha=1, color='#FFFFFF')
+			thmid = (thf+th0)/2
+			x = center.x + radius*np.cos(thmid)
+			y = center.y + radius*np.sin(thmid)
+			plt.text(x,
+							 y,
+							 label,
+							 fontsize=12,
+							 rotation=np.rad2deg(thmid),
+							 horizontalalignment='center',
+							 bbox=bbox
+							 )
+		
 	def __repr__(self):
 		return f'Arc({self.center}, {self.radius}, {self.th0}, {self.thf})'
 
@@ -257,17 +309,84 @@ class Circle(Arc):
 	def __repr__(self):
 		return f'Circle({self.center}, {self.radius})'
 
+
 class Rectangle(object):
 	"""
 	Creates a Rectangle object
 	
 	Args:
 		pt0 (Point): lower left corner of rectangle
-		pt1 (Point): upper right corner of rectangle
+		pt2 (Point): upper right corner of rectangle
 	"""
-	def __init__(self, pt0, pt1):
+	def __init__(self, pt0, pt2, pt1=None, pt3 = None):
 		self.pt0 = pt0
-		self.pt1 = pt1
+		self.pt2 = pt2
+		
+		if pt1 is not None and pt3 is not None:
+			self.pt1 = pt1
+			self.pt3 = pt3
+		else:
+			self.pt1 = Point(pt2.x, pt0.y)
+			self.pt3 = Point(pt0.x, pt2.y)
+			
+	@classmethod
+	def from_center(cls, center, b, h):
+		"""
+		Args:
+			center (Point): Center of the shape
+			b (float): base/width of rectangle
+			h (float): height of rectangle
+		"""
+		pt0 = Point(center.x-b/2, center.y-h/2)
+		pt1 = Point(center.x+b/2, center.y+h/2)
+		
+		return cls(pt0, pt1)
+	
+	@classmethod
+	def from_array(cls, array):
+		"""
+		Alternative constructor
+		
+		"""
+		if array.shape[1] != 2:
+			raise ValueError('Input must be two column 2darray.')
+		x = array[:, 0]
+		y = array[:, 1]
+		
+		pt0 = Point(x[0], y[0])
+		pt1 = Point(x[1], y[1])
+		pt2 = Point(x[2], y[2])
+		pt3 = Point(x[3], y[3])
+		return cls(pt0, pt2, pt1=pt1, pt3=pt3)
+	
+	@property	
+	def asArray(self):
+		pt0 = self.pt0
+		pt1 = self.pt1
+		pt2 = self.pt2
+		pt3 = self.pt3
+		
+		pts = [
+			[pt0.x, pt0.y],
+			[pt1.x, pt1.y],
+			[pt2.x, pt2.y],
+			[pt3.x, pt3.y],
+			[pt0.x, pt0.y]
+			]
+		return np.array(pts)
+	
+	def rotate(self, theta):
+		
+		R = RotationMatrix(theta)
+		new = (R @ self.asArray.T).T
+		newRect = Rectangle.from_array(new)
+		return newRect
+		
+	def plot(self, lw=1, color='k', **kwargs):
+		
+		plt.plot(self.asArray[:,0], self.asArray[:,1], lw=lw, color='k')
+		
+		return self
 		
 class Square(Rectangle):
 	"""
@@ -278,7 +397,7 @@ class Square(Rectangle):
 		s (float): side length of the square
 	"""
 	def __init__(self, pt0, s):
-		pt1 = Point(pt0.x+s, pt0.y+x)
+		pt1 = Point(pt0.x+s, pt0.y+s)
 		Rectangle.__init__(self, pt0, pt1)
 	
 	
