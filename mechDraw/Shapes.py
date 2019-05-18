@@ -39,7 +39,12 @@ class Point(object):
 		self.x = x
 		self.y = y
 	
+	@property
 	def asArray(self):
+		"""
+		Returns:
+			the x and y position as a row vector
+		"""
 		return np.array([[self.x, self.y]])
 		
 	def deform(self, F):
@@ -52,7 +57,21 @@ class Point(object):
 		Returns:
 			Point: A *new* Point object
 		"""
-		pass
+		x0 = self.asArray
+		x1 = F.dot(x0.T).T
+		return Point(x1[0, 0], x1[0, 1])
+	
+	@classmethod
+	def polar(cls, radius, angle, deg=False):
+		
+		if deg == True:
+			# Concert input angle to radians if they are degrees
+			angle = np.rad2deg(angle)
+			
+		x = radius*np.cos(angle)
+		y = radius*np.sin(angle)
+		
+		return cls(x, y)
 		
 	def rotate(self, theta, about=None):
 		"""
@@ -62,16 +81,21 @@ class Point(object):
 			theta (float): Amount to rotate the Point by
 		
 		Kwargs:
-			about (Point): The Point to rotate the point about
+			about (Point): Point to rotate the point about. If None, defaults to origin
 		
 		Returns:
 			Point: A *new* Point object
 		"""
 		R = RotationMatrix(theta)
 		# 2x2 @ (1x2).T
-		x0 = self.asArray()
-		new = R.dot(x0.T).T
-		return Point(new[0, 0], new[0, 1])
+		x0 = self.asArray
+		if about is None:
+			# (R*x')'
+			x1 = (R.dot(x0.T)).T
+		else:
+			# (R*(x'-c')+c)'
+			x1 = (R.dot(x0.T - about.asArray.T) + about.asArray.T).T
+		return Point(x1[0, 0], x1[0, 1])
 	
 	def plot(self, color='k', style=None, **kwargs):
 		if style is None:
@@ -80,7 +104,7 @@ class Point(object):
 			plt.scatter(self.x, self.y, **style, **kwargs)
 		
 	def __repr__(self):
-		return f'Point({self.x}, {self.y})'
+		return f'Point({round(self.x, 5)}, {round(self.y, 5)})'
 		
 		
 class Line(object):
