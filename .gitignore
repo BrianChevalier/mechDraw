@@ -1,6 +1,7 @@
 *.icloud
 */__pycache__/*
 */.ipynb_checkpoints/*
+*.ipynb_checkpoints/*
 *.DS_Store
 dist/*
 *.cache*
